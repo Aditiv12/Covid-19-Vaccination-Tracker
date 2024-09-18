@@ -1,26 +1,84 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
+import altair as alt
+import matplotlib.pyplot as plt
 
-st.write("""
-# My first app
-Hello *World!*
-""")
+st.set_page_config(
+    page_title="Covid Vaccine Status",
+    page_icon="💉",
+    # layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+alt.themes.enable("dark")
 
 df = pd.read_csv("covid_vaccine_statewise.csv")
-# st.dataframe(df)
-# st.line_chart(df, x='State', y='Total Doses Administered')
-df1 = pd.read_csv("StatewiseTestingDetails.csv")
+prasad = df[['State', 'Total Doses Administered', 'Male (Doses Administered)', 'Female (Doses Administered)']]
+prasad = prasad.dropna(subset=['Total Doses Administered','Male (Doses Administered)', 'Female (Doses Administered)'], axis=0, how='any')
+state = prasad['State'].unique()
+state = state.tolist()
+state.pop(0)
+prasad_dic_male ={}
+prasad_dic_female ={}
+for i in state:
+    prasad_dic_male[i] = max(prasad[prasad['State']==i]['Male (Doses Administered)'])
+    prasad_dic_female[i] = max(prasad[prasad['State']==i]['Female (Doses Administered)'])
+column1 = list(prasad_dic_male.keys())
+column2 = list(prasad_dic_male.values())
+column3 = list(prasad_dic_female.values())
+data = {'State':column1, 'male':column2, 'female':column3}
+df1 = pd.DataFrame(data)
 
 shantanu = df
 shantanu = shantanu[['Updated On', 'State', 'Total Doses Administered', 'First Dose Administered', 'Second Dose Administered']]
 shantanu = shantanu.dropna(subset=['Total Doses Administered','First Dose Administered', 'Second Dose Administered'], axis=0, how='all')
-# fig2, q = plt.subplots()
-# q.bar(x=shantanu['State'], color)
-# q.legend(labels=list(dic1.keys()), loc="lower left", bbox_to_anchor=(1,0))
-# st.pyplot(fig)
+shantanu['Updated On'] = pd.to_datetime(shantanu['Updated On'])
 
+with st.sidebar:
+    st.title('Covid Vaccine Dashboard')
+
+    state_list = state
+    selected_state = st.selectbox('Select a state', state_list, index=len(state_list)-1)
+    df1_selected_state = df1[df1['State']==selected_state]
+
+def plot_male_female(state):
+    male = int(df1[df1['State']==state]['male'])
+    female = int(df1[df1['State']==state]['female'])
+    plot = (male,female)
+    fig,x = plt.subplots()
+    plt.title('Male/Female vaccination distribution in '+state)
+    x.pie(x=plot, startangle=90, colors=['b', 'pink'], labels=['Male', 'Female'])
+    plt.tight_layout()
+    st.pyplot(fig)
+    # return x
+
+def first_second_dose(state):
+    df = shantanu[shantanu['State']==state]
+    dates = list(df['Updated On'])
+    dates = dates[::15]
+    total = list(df['Total Doses Administered'])
+    total = total[::15]
+    first = list(df['First Dose Administered'])
+    first = first[::15]
+    second = list(df['Second Dose Administered'])
+    second = second[::15]
+    bw = 0.30
+    bw1 = np.arange(len(dates))
+    bw2 = [x + bw for x in bw1]
+    bw3 = [x + bw for x in bw2]
+    fig, x = plt.subplots()
+    x.bar(bw1, total, width=bw, label='Total', color='orange', edgecolor='black')
+    x.bar(bw2, first, width=bw, label='First Dose', color='red', edgecolor='black')
+    x.bar(bw3, second, width=bw, label='Second Dose', color='yellow', edgecolor='black')
+    plt.xlabel('Dates') 
+    plt.ylabel('Doses') 
+    plt.xticks([r + bw for r in range(len(dates))], dates)
+    plt.xticks(rotation=90)
+    plt.title('Doses Administered in '+state)
+    plt.legend()
+    st.pyplot(fig)
+    # plt.show()
 
 aditi = df[df['State'] != 'India']
 x=aditi.iloc[:,1:5]
@@ -40,87 +98,6 @@ plt.xticks(rotation=90)
 # z.show()
 st.pyplot(fig1)
 
-
-
-prasad = df[['State', 'Total Doses Administered', 'Male (Doses Administered)', 'Female (Doses Administered)']]
-prasad = prasad.dropna(subset=['Total Doses Administered','Male (Doses Administered)', 'Female (Doses Administered)'], axis=0, how='any')
-state = prasad['State'].unique()
-state = state.tolist()
-state.remove('India')
-prasad_dic_male ={}
-prasad_dic_female ={}
-bw = 0.5
-bw1 = np.arange(len(state))
-bw2 = [x + bw for x in bw1]
-for i in state:
-    prasad_dic_male[i] = max(prasad[prasad['State']==i]['Male (Doses Administered)'])
-    prasad_dic_female[i] = max(prasad[prasad['State']==i]['Female (Doses Administered)'])
-fig2, w = plt.subplots()
-w.bar(bw1, list(prasad_dic_male.values()), color='b', width=bw, label='Male')
-w.bar(bw2, list(prasad_dic_female.values()), color='pink', width=bw, label='Female')
-plt.xlabel('States') 
-plt.ylabel('Vaccinated') 
-plt.xticks([r + bw for r in range(len(state))], state)
-plt.xticks(rotation=90)
-w.legend()
-plt.title('Male-Female Distribution')
-st.pyplot(fig2)
-
-data1 = df
-data1 = data1.iloc[:,:3]
-# data1
-
-data2 = df1
-data2 = data2.iloc[:,1:]
-
-data1 = data1.dropna(subset='Total Doses Administered', axis=0)
-data2 = data2.dropna(subset=['Negative', 'Positive'], axis=0, how='all')
-
-# st.bar_chart(data1, x='State', y='Total Doses Administered')
-
-states = data1['State'].unique()
-
-dic = {}
-for i in states:
-    dic[i] = max(data1[data1['State']==i]['Total Doses Administered'])
-
-# print(dic)
-
-states1 = data2['State'].unique()
-
-dic1 = {}
-for i in states1:
-    dic1[i] = max(data2[data2['State']==i]['TotalSamples'])
-
-# print(dic1)
-    
-# ind = dic.pop('India')
-
-dic1_keys = list(dic1.keys())
-dic1_keys.sort()
-
-sorted_dic = {i: dic[i] for i in dic1_keys}
-sorted_dic1 = {i: dic1[i] for i in dic1_keys}
-
-data2 = data2.replace(' ', np.nan)
-
-data2['Positive'] = pd.to_numeric(data2['Positive'])
-data2['Negative'] = pd.to_numeric(data2['Negative'])
-
-for i in range(9073):
-    if(str(data2.iloc[i,3])=='nan' or (data2.iloc[i,3]==' ')):
-        data2.iloc[i,3] = data2.iloc[i,1] - data2.iloc[i,2]
-    if((str(data2.iloc[i,2])=='nan') or (data2.iloc[i,2]==' ')):
-        data2.iloc[i,2] = data2.iloc[i,1] - data2.iloc[i,3]
-
-# data2
-
-column1 = list(sorted_dic.keys())
-column2 = list(sorted_dic.values())
-# column3 = list(dic1.keys())
-column4 = list(sorted_dic1.values())
-
-fig, x = plt.subplots()
-x.pie(x=list(dic1.values()))
-x.legend(labels=list(dic1.keys()), loc="lower left", bbox_to_anchor=(1,0))
-st.pyplot(fig)
+plot_male_female(selected_state)
+# st.pyplot(q)
+first_second_dose(selected_state)
